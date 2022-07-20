@@ -9,12 +9,14 @@ import {
   RadioGroup,
   styled,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
-import { Container } from "@mui/system";
 import { nanoid } from "nanoid";
 import { useEffect, useState } from "react";
-import Heading from "./Heading";
+import GoogleIcon from "./icons/GoogleIcon";
+import FacebookIcon from "./icons/FacebookIcon";
+import { grey } from "@mui/material/colors";
 
 const Block = styled(Grid)(({ theme }) => ({
   backgroundColor: theme.palette.grey[100],
@@ -36,6 +38,12 @@ const CodeBlock = styled("code")(({ theme }) => ({
   fontFamily: "'Fira Code', monospace",
 }));
 
+const ProviderPanel = styled(Grid)(({ theme }) => ({
+  padding: theme.spacing(2),
+  backgroundColor: grey[100],
+  borderRadius: theme.shape.borderRadius,
+}));
+
 function sha256(string) {
   const utf8 = new TextEncoder().encode(string);
   return crypto.subtle.digest("SHA-256", utf8).then((hashBuffer) => {
@@ -50,11 +58,24 @@ function sha256(string) {
 const PKCE_TYPES = ["S256", "PLAIN"];
 const RESPONSE_TYPES = ["code", "token", "id_token"];
 const RESPONSE_MODES = ["query", "form_post", "fragment"];
+const OAUTH_PROVIDERS = [
+  {
+    name: "Google",
+    authoriseUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+    tokenUrl: "https://oauth2.googleapis.com/token",
+    icon: <GoogleIcon />,
+  },
+  {
+    name: "Facebook",
+    authoriseUrl: "https://www.facebook.com/v14.0/dialog/oauth",
+    tokenUrl: "https://graph.facebook.com/v14.0/oauth/access_token",
+    icon: <FacebookIcon />,
+  },
+];
 
 function App() {
-  const [authoriseUrl, setAuthoriseUrl] = useState(
-    ""
-  );
+  const [authoriseUrl, setAuthoriseUrl] = useState("");
+  const [tokenUrl, setTokenUrl] = useState("");
   const [callbackUrl, setCallbackUrl] = useState(
     "http://localhost:3000/callback"
   );
@@ -85,6 +106,10 @@ function App() {
   const onStartOauth = (e) => {
     e.preventDefault();
     window.location.href = `${authoriseUrl}?${queryString}`;
+  };
+  const prefillProvider = (provider) => {
+    setAuthoriseUrl(provider.authoriseUrl);
+    setTokenUrl(provider.tokenUrl);
   };
 
   useEffect(() => {
@@ -143,21 +168,62 @@ function App() {
           <Grid item xs={12}>
             <Grid container spacing={2}>
               <Grid item xs={12}>
+                <Grid container>
+                  <ProviderPanel item xs={12}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <Typography variant="body1">
+                          Click on an existing provider to pre-fill URLs, or enter details manually.
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Grid container spacing={2}>
+                          {OAUTH_PROVIDERS.map((provider) => (
+                            <Grid item key={provider.name}>
+                              <Button
+                                variant="container"
+                                startIcon={provider.icon}
+                                onClick={prefillProvider.bind(null, provider)}
+                              >
+                                {provider.name}
+                              </Button>
+                            </Grid>
+                          ))}
+                        </Grid>
+                      </Grid>
+                    </Grid>
+                  </ProviderPanel>
+                </Grid>
+              </Grid>
+              <Grid item xs={12}>
                 <Block item xs={12}>
-                  <Grid container spacing={2}>
+                  <Grid container spacing={3}>
                     <Grid item xs={12}>
                       <Typography variant="h6">Request Parameters</Typography>
                     </Grid>
                     <Grid item xs={12}>
                       <Grid container spacing={2}>
                         <Grid item xs={12}>
-                          <TextField
-                            fullWidth
-                            label="Authorize URL"
-                            variant="outlined"
-                            value={authoriseUrl}
-                            onChange={createChangeHandler(setAuthoriseUrl)}
-                          />
+                          <Grid container spacing={2}>
+                            <Grid item xs={12}>
+                              <TextField
+                                fullWidth
+                                label="Authorize URL"
+                                variant="outlined"
+                                value={authoriseUrl}
+                                onChange={createChangeHandler(setAuthoriseUrl)}
+                              />
+                            </Grid>
+                            <Grid item xs={12}>
+                              <TextField
+                                fullWidth
+                                label="Token URL"
+                                variant="outlined"
+                                value={tokenUrl}
+                                onChange={createChangeHandler(setTokenUrl)}
+                              />
+                            </Grid>
+                          </Grid>
                         </Grid>
                         <Grid item xs={12}>
                           <TextField
@@ -186,7 +252,7 @@ function App() {
                             onChange={createChangeHandler(setScope)}
                           />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid item xs={6}>
                           <TextField
                             fullWidth
                             label="State"
@@ -195,7 +261,7 @@ function App() {
                             onChange={createChangeHandler(setState)}
                           />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid item xs={6}>
                           <TextField
                             fullWidth
                             label="Nonce"
@@ -289,14 +355,15 @@ function App() {
                           />
                         </Grid>
                         <Grid item xs={12}>
+                          <Tooltip title="Code Challenge is derived from the Code Verifier and cannot be changed">
                           <TextField
                             fullWidth
                             label="Code Challenge"
                             value={pkceChallenge}
-                            disabled={!pkceEnabled}
+                            disabled
                             variant="outlined"
-                            onChange={createChangeHandler(setPkceChallenge)}
                           />
+                          </Tooltip>
                         </Grid>
                       </Grid>
                     </Grid>
