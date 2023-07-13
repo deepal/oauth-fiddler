@@ -18,7 +18,7 @@ import { useEffect, useState } from "react";
 import GoogleIcon from "./icons/GoogleIcon";
 import FacebookIcon from "./icons/FacebookIcon";
 import { grey } from "@mui/material/colors";
-import CtmIcon from "@mui/icons-material/Copyright";
+import CopyIcon from "@mui/icons-material/Copyright";
 
 export const Block = styled(Grid)(({ theme }) => ({
   backgroundColor: theme.palette.grey[100],
