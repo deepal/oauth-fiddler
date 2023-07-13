@@ -4,6 +4,7 @@ import {
   FormControl,
   FormControlLabel,
   FormGroup,
+  FormHelperText,
   Grid,
   Radio,
   RadioGroup,
@@ -17,8 +18,9 @@ import { useEffect, useState } from "react";
 import GoogleIcon from "./icons/GoogleIcon";
 import FacebookIcon from "./icons/FacebookIcon";
 import { grey } from "@mui/material/colors";
+import CtmIcon from "@mui/icons-material/Copyright";
 
-const Block = styled(Grid)(({ theme }) => ({
+export const Block = styled(Grid)(({ theme }) => ({
   backgroundColor: theme.palette.grey[100],
   padding: theme.spacing(3),
   borderRadius: theme.shape.borderRadius,
@@ -30,7 +32,7 @@ const RoundButton = styled(Button)(({ theme }) => ({
   borderRadius: 100,
 }));
 
-const CodeBlock = styled("code")(({ theme }) => ({
+export const CodeBlock = styled("code")(({ theme }) => ({
   whiteSpace: "pre-wrap",
   fontSize: "1em",
   lineHeight: "1.5",
@@ -44,15 +46,23 @@ const ProviderPanel = styled(Grid)(({ theme }) => ({
   borderRadius: theme.shape.borderRadius,
 }));
 
-function sha256(string) {
-  const utf8 = new TextEncoder().encode(string);
-  return crypto.subtle.digest("SHA-256", utf8).then((hashBuffer) => {
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray
-      .map((bytes) => bytes.toString(16).padStart(2, "0"))
-      .join("");
-    return hashHex;
+function generatePKCECodeChallenge(codeVerifier) {
+  const encoder = new TextEncoder();
+  const codeData = encoder.encode(codeVerifier);
+
+  return crypto.subtle.digest("SHA-256", codeData).then((buffer) => {
+    const hashArray = Array.from(new Uint8Array(buffer));
+    const base64UrlEncoded = base64UrlEncode(hashArray);
+    return base64UrlEncoded;
   });
+}
+
+function base64UrlEncode(buffer) {
+  let base64 = window.btoa(String.fromCharCode.apply(null, buffer));
+  base64 = base64.replace(/=/g, "");
+  base64 = base64.replace(/\+/g, "-");
+  base64 = base64.replace(/\//g, "_");
+  return base64;
 }
 
 const PKCE_TYPES = ["S256", "PLAIN"];
@@ -64,13 +74,15 @@ const OAUTH_PROVIDERS = [
     authoriseUrl: "https://accounts.google.com/o/oauth2/v2/auth",
     tokenUrl: "https://oauth2.googleapis.com/token",
     icon: <GoogleIcon />,
+    prompts: ["consent", "select_account"],
   },
   {
     name: "Facebook",
     authoriseUrl: "https://www.facebook.com/v14.0/dialog/oauth",
     tokenUrl: "https://graph.facebook.com/v14.0/oauth/access_token",
     icon: <FacebookIcon />,
-  },
+    prompts: [],
+  }
 ];
 
 function App() {
@@ -79,9 +91,8 @@ function App() {
   const [callbackUrl, setCallbackUrl] = useState(
     "http://localhost:3000/callback"
   );
-  const [clientId, setClientId] = useState(
-    ""
-  );
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
   const [scope, setScope] = useState("openid");
   const [state, setState] = useState(nanoid());
   const [nonce, setNonce] = useState(1234562);
@@ -91,7 +102,26 @@ function App() {
   const [pkceVerifier, setPkceVerifier] = useState("");
   const [pkceChallenge, setPkceChallenge] = useState("");
   const [pkceType, setPkceType] = useState(PKCE_TYPES[0]);
+  const [prompt, setPrompt] = useState("");
   const [queryString, setQueryString] = useState("");
+
+  useEffect(() => {
+    sessionStorage.setItem("authoriseUrl", authoriseUrl);
+    sessionStorage.setItem("tokenUrl", tokenUrl);
+    sessionStorage.setItem("callbackUrl", callbackUrl);
+    sessionStorage.setItem("clientId", clientId);
+    sessionStorage.setItem("clientSecret", clientSecret);
+    sessionStorage.setItem("scope", scope);
+    sessionStorage.setItem("pkceVerifier", pkceVerifier);
+  }, [
+    tokenUrl,
+    authoriseUrl,
+    callbackUrl,
+    clientId,
+    clientSecret,
+    scope,
+    pkceVerifier,
+  ]);
 
   const createChangeHandler = (setterFn) => (e) => setterFn(e.target.value);
   const createCheckboxChangeHandler = (setterFn) => (e) =>
@@ -103,6 +133,7 @@ function App() {
       setResponseType((type) => type.filter((t) => t !== e.target.name));
     }
   };
+
   const onStartOauth = (e) => {
     e.preventDefault();
     window.location.href = `${authoriseUrl}?${queryString}`;
@@ -110,6 +141,7 @@ function App() {
   const prefillProvider = (provider) => {
     setAuthoriseUrl(provider.authoriseUrl);
     setTokenUrl(provider.tokenUrl);
+    setPrompt(provider.prompts.join(" "));
   };
 
   useEffect(() => {
@@ -127,6 +159,7 @@ function App() {
         : {}),
       state,
       nonce,
+      prompt,
     };
     const qs = new URLSearchParams(params).toString();
     setQueryString(qs);
@@ -141,6 +174,7 @@ function App() {
     pkceEnabled,
     pkceType,
     pkceChallenge,
+    prompt,
   ]);
 
   useEffect(() => {
@@ -155,7 +189,9 @@ function App() {
   useEffect(() => {
     if (!pkceVerifier) return;
     if (pkceType === "S256") {
-      sha256(pkceVerifier).then((result) => setPkceChallenge(result));
+      generatePKCECodeChallenge(pkceVerifier).then((result) =>
+        setPkceChallenge(result)
+      );
     } else {
       setPkceChallenge(pkceVerifier);
     }
@@ -173,7 +209,8 @@ function App() {
                     <Grid container spacing={2}>
                       <Grid item xs={12}>
                         <Typography variant="body1">
-                          Click on an existing provider to pre-fill URLs, or enter details manually.
+                          Click on an existing provider to pre-fill URLs, or
+                          enter details manually.
                         </Typography>
                       </Grid>
                       <Grid item xs={12}>
@@ -199,7 +236,7 @@ function App() {
                 <Block item xs={12}>
                   <Grid container spacing={3}>
                     <Grid item xs={12}>
-                      <Typography variant="h6">Request Parameters</Typography>
+                      <Typography variant="h6">Parameters</Typography>
                     </Grid>
                     <Grid item xs={12}>
                       <Grid container spacing={2}>
@@ -222,6 +259,10 @@ function App() {
                                 value={tokenUrl}
                                 onChange={createChangeHandler(setTokenUrl)}
                               />
+                              <FormHelperText>
+                                optional. only required to exchange
+                                authorization code for tokens
+                              </FormHelperText>
                             </Grid>
                           </Grid>
                         </Grid>
@@ -234,7 +275,7 @@ function App() {
                             onChange={createChangeHandler(setCallbackUrl)}
                           />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid item xs={6}>
                           <TextField
                             fullWidth
                             label="Client ID"
@@ -242,6 +283,19 @@ function App() {
                             value={clientId}
                             onChange={createChangeHandler(setClientId)}
                           />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <TextField
+                            fullWidth
+                            label="Client Secret"
+                            variant="outlined"
+                            value={clientSecret}
+                            onChange={createChangeHandler(setClientSecret)}
+                          />
+                          <FormHelperText>
+                            optional. only required to exchange authorization
+                            code for tokens
+                          </FormHelperText>
                         </Grid>
                         <Grid item xs={12}>
                           <TextField
@@ -270,38 +324,50 @@ function App() {
                             onChange={createChangeHandler(setNonce)}
                           />
                         </Grid>
+                        <Grid item xs={12}>
+                          <TextField
+                            fullWidth
+                            label="Prompt"
+                            variant="outlined"
+                            value={prompt}
+                            onChange={createChangeHandler(setPrompt)}
+                          />
+                        </Grid>
                       </Grid>
                     </Grid>
                   </Grid>
                 </Block>
               </Grid>
+
               <Grid item xs={12}>
-                <Block item xs={12}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12}>
-                      <Typography variant="h6">Response Type</Typography>
+                <Grid container>
+                  <Block item xs={12}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <Typography variant="h6">Response Type</Typography>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <FormControl component="fieldset" variant="standard">
+                          <FormGroup row>
+                            {RESPONSE_TYPES.map((rt) => (
+                              <FormControlLabel
+                                key={rt}
+                                control={
+                                  <Checkbox
+                                    name={rt}
+                                    checked={responseType.includes(rt)}
+                                    onChange={onChangeResponseType}
+                                  />
+                                }
+                                label={rt}
+                              />
+                            ))}
+                          </FormGroup>
+                        </FormControl>
+                      </Grid>
                     </Grid>
-                    <Grid item xs={12}>
-                      <FormControl component="fieldset" variant="standard">
-                        <FormGroup row>
-                          {RESPONSE_TYPES.map((rt) => (
-                            <FormControlLabel
-                              key={rt}
-                              control={
-                                <Checkbox
-                                  name={rt}
-                                  checked={responseType.includes(rt)}
-                                  onChange={onChangeResponseType}
-                                />
-                              }
-                              label={rt}
-                            />
-                          ))}
-                        </FormGroup>
-                      </FormControl>
-                    </Grid>
-                  </Grid>
-                </Block>
+                  </Block>
+                </Grid>
               </Grid>
               <Grid item xs={12}>
                 <Block item xs={12}>
@@ -356,13 +422,13 @@ function App() {
                         </Grid>
                         <Grid item xs={12}>
                           <Tooltip title="Code Challenge is derived from the Code Verifier and cannot be changed">
-                          <TextField
-                            fullWidth
-                            label="Code Challenge"
-                            value={pkceChallenge}
-                            disabled
-                            variant="outlined"
-                          />
+                            <TextField
+                              fullWidth
+                              label="Code Challenge"
+                              value={pkceChallenge}
+                              disabled
+                              variant="outlined"
+                            />
                           </Tooltip>
                         </Grid>
                       </Grid>
