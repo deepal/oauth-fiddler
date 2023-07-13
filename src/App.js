@@ -46,6 +46,12 @@ const ProviderPanel = styled(Grid)(({ theme }) => ({
   borderRadius: theme.shape.borderRadius,
 }));
 
+function generateRandomString() {
+  var arr = new Uint8Array(25);
+  window.crypto.getRandomValues(arr);
+  return Array.from(arr, (dec) => dec.toString(16).padStart(2, "0")).join("");
+}
+
 function generatePKCECodeChallenge(codeVerifier) {
   const encoder = new TextEncoder();
   const codeData = encoder.encode(codeVerifier);
@@ -82,7 +88,7 @@ const OAUTH_PROVIDERS = [
     tokenUrl: "https://graph.facebook.com/v14.0/oauth/access_token",
     icon: <FacebookIcon />,
     prompts: [],
-  }
+  },
 ];
 
 function App() {
@@ -179,7 +185,7 @@ function App() {
 
   useEffect(() => {
     if (pkceEnabled) {
-      setPkceVerifier(nanoid());
+      setPkceVerifier(generateRandomString());
     } else {
       setPkceVerifier("");
       setPkceChallenge("");
