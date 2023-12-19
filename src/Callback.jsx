@@ -1,6 +1,6 @@
 import { Button, Grid, styled, Typography } from "@mui/material";
 import { grey } from "@mui/material/colors";
-import jwtDecode from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
 import React, { useEffect, useState } from "react";
 import { useQueryParams } from "./hooks";
 import { Block, CodeBlock } from "./App";
