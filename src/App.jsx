@@ -18,7 +18,7 @@ import {
 import { nanoid } from "nanoid";
 import { useEffect, useState } from "react";
 import { grey } from "@mui/material/colors";
-import TuneIcon from "@mui/icons-material/Tune";
+import { PRESETS } from './presets';
 import RadioButtonChecked from "@mui/icons-material/RadioButtonChecked";
 import RadioButtonUnchecked from "@mui/icons-material/RadioButtonUnchecked";
 import FormatColorFillIcon from "@mui/icons-material/FormatColorFill";
@@ -77,26 +77,6 @@ function base64UrlEncode(buffer) {
 const PKCE_TYPES = ["S256", "PLAIN"];
 const RESPONSE_TYPES = ["code", "token", "id_token"];
 const RESPONSE_MODES = ["query", "form_post", "fragment"];
-
-const PRESETS = [
-  {
-    name: "Google",
-    authoriseUrl: "https://accounts.google.com/o/oauth2/v2/auth",
-    tokenUrl: "https://oauth2.googleapis.com/token",
-    prompt: "consent select_account",
-    pkceEnabled: true,
-    pkceType: "S256",
-    responseMode: "query",
-    responseType: "code",
-    scope: "openid",
-  },
-  {
-    name: "Facebook",
-    authoriseUrl: "https://www.facebook.com/v14.0/dialog/oauth",
-    tokenUrl: "https://graph.facebook.com/v14.0/oauth/access_token",
-    prompt: "",
-  },
-];
 
 const AdornmentButton = ({ disabled, onClick }) => {
   return (
