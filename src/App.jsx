@@ -6,6 +6,8 @@ import {
   FormGroup,
   FormHelperText,
   Grid,
+  IconButton,
+  InputAdornment,
   Radio,
   RadioGroup,
   styled,
@@ -15,10 +17,11 @@ import {
 } from "@mui/material";
 import { nanoid } from "nanoid";
 import { useEffect, useState } from "react";
-import GoogleIcon from "./icons/GoogleIcon";
-import FacebookIcon from "./icons/FacebookIcon";
 import { grey } from "@mui/material/colors";
-import CopyIcon from "@mui/icons-material/Copyright";
+import TuneIcon from "@mui/icons-material/Tune";
+import RadioButtonChecked from "@mui/icons-material/RadioButtonChecked";
+import RadioButtonUnchecked from "@mui/icons-material/RadioButtonUnchecked";
+import FormatColorFillIcon from "@mui/icons-material/FormatColorFill";
 
 export const Block = styled(Grid)(({ theme }) => ({
   backgroundColor: theme.palette.grey[100],
@@ -74,24 +77,39 @@ function base64UrlEncode(buffer) {
 const PKCE_TYPES = ["S256", "PLAIN"];
 const RESPONSE_TYPES = ["code", "token", "id_token"];
 const RESPONSE_MODES = ["query", "form_post", "fragment"];
-const OAUTH_PROVIDERS = [
+
+const PRESETS = [
   {
     name: "Google",
     authoriseUrl: "https://accounts.google.com/o/oauth2/v2/auth",
     tokenUrl: "https://oauth2.googleapis.com/token",
-    icon: <GoogleIcon />,
-    prompts: ["consent", "select_account"],
+    prompt: "consent select_account",
+    pkceEnabled: true,
+    pkceType: "S256",
+    responseMode: "query",
+    responseType: "code",
+    scope: "openid",
   },
   {
     name: "Facebook",
     authoriseUrl: "https://www.facebook.com/v14.0/dialog/oauth",
     tokenUrl: "https://graph.facebook.com/v14.0/oauth/access_token",
-    icon: <FacebookIcon />,
-    prompts: [],
+    prompt: "",
   },
 ];
 
+const AdornmentButton = ({ disabled, onClick }) => {
+  return (
+    <InputAdornment position="end">
+      <IconButton disabled={disabled} onClick={onClick}>
+        <FormatColorFillIcon />
+      </IconButton>
+    </InputAdornment>
+  );
+};
+
 function App() {
+  const [selectedPresetName, setSelectedPresetName] = useState("");
   const [authoriseUrl, setAuthoriseUrl] = useState("");
   const [tokenUrl, setTokenUrl] = useState("");
   const [callbackUrl, setCallbackUrl] = useState(
@@ -101,7 +119,7 @@ function App() {
   const [clientSecret, setClientSecret] = useState("");
   const [scope, setScope] = useState("openid");
   const [state, setState] = useState(nanoid());
-  const [nonce, setNonce] = useState(1234562);
+  const [nonce, setNonce] = useState("");
   const [responseType, setResponseType] = useState([RESPONSE_TYPES[0]]);
   const [responseMode, setResponseMode] = useState(RESPONSE_MODES[0]);
   const [pkceEnabled, setPkceEnabled] = useState(false);
@@ -144,10 +162,23 @@ function App() {
     e.preventDefault();
     window.location.href = `${authoriseUrl}?${queryString}`;
   };
-  const prefillProvider = (provider) => {
-    setAuthoriseUrl(provider.authoriseUrl);
-    setTokenUrl(provider.tokenUrl);
-    setPrompt(provider.prompts.join(" "));
+
+  const normaliseString = (v) => v || "";
+
+  const setPreset = (preset) => {
+    setSelectedPresetName(normaliseString(preset.name));
+    setAuthoriseUrl(normaliseString(preset.authoriseUrl));
+    setTokenUrl(normaliseString(preset.tokenUrl));
+    setClientId(normaliseString(preset.clientId));
+    setScope(normaliseString(preset.scope));
+    setState(normaliseString(preset.state));
+    setNonce(normaliseString(preset.nonce));
+    setResponseType(normaliseString(preset.responseType));
+    setResponseMode(normaliseString(preset.responseMode));
+    setPkceEnabled(!!preset.pkceEnabled);
+    setPkceVerifier(normaliseString(preset.pkceVerifier));
+    setPkceType(normaliseString(preset.pkceType));
+    setPrompt(normaliseString(preset.prompt));
   };
 
   useEffect(() => {
@@ -215,24 +246,36 @@ function App() {
                     <Grid container spacing={2}>
                       <Grid item xs={12}>
                         <Typography variant="body1">
-                          Click on an existing provider to pre-fill URLs, or
+                          Choose one of the following presets to prefill, or
                           enter details manually.
                         </Typography>
                       </Grid>
                       <Grid item xs={12}>
                         <Grid container spacing={2}>
-                          {OAUTH_PROVIDERS.map((provider) => (
-                            <Grid item key={provider.name}>
+                          {PRESETS.map((preset) => (
+                            <Grid item key={preset.name}>
                               <Button
                                 variant="container"
-                                startIcon={provider.icon}
-                                onClick={prefillProvider.bind(null, provider)}
+                                startIcon={
+                                  preset.name === selectedPresetName ? (
+                                    <RadioButtonChecked />
+                                  ) : (
+                                    <RadioButtonUnchecked />
+                                  )
+                                }
+                                onClick={() => setPreset(preset)}
                               >
-                                {provider.name}
+                                {preset.name}
                               </Button>
                             </Grid>
                           ))}
                         </Grid>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <FormHelperText>
+                          Warning! Choosing a preset will replace all current
+                          values in the form.
+                        </FormHelperText>
                       </Grid>
                     </Grid>
                   </ProviderPanel>
@@ -319,6 +362,13 @@ function App() {
                             variant="outlined"
                             value={state}
                             onChange={createChangeHandler(setState)}
+                            InputProps={{
+                              endAdornment: (
+                                <AdornmentButton
+                                  onClick={() => setState(nanoid())}
+                                />
+                              ),
+                            }}
                           />
                         </Grid>
                         <Grid item xs={6}>
@@ -328,6 +378,13 @@ function App() {
                             variant="outlined"
                             value={nonce}
                             onChange={createChangeHandler(setNonce)}
+                            InputProps={{
+                              endAdornment: (
+                                <AdornmentButton
+                                  onClick={() => setNonce(nanoid())}
+                                />
+                              ),
+                            }}
                           />
                         </Grid>
                         <Grid item xs={12}>
@@ -361,7 +418,7 @@ function App() {
                                 control={
                                   <Checkbox
                                     name={rt}
-                                    checked={responseType.includes(rt)}
+                                    checked={responseType === rt}
                                     onChange={onChangeResponseType}
                                   />
                                 }
@@ -423,6 +480,16 @@ function App() {
                             value={pkceVerifier}
                             disabled={!pkceEnabled}
                             variant="outlined"
+                            InputProps={{
+                              endAdornment: (
+                                <AdornmentButton
+                                  disabled={!pkceEnabled}
+                                  onClick={() =>
+                                    setPkceVerifier(generateRandomString())
+                                  }
+                                />
+                              ),
+                            }}
                             onChange={createChangeHandler(setPkceVerifier)}
                           />
                         </Grid>
