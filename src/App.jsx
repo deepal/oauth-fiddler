@@ -149,6 +149,7 @@ function App() {
     setSelectedPresetName(normaliseString(preset.name));
     setAuthoriseUrl(normaliseString(preset.authoriseUrl));
     setTokenUrl(normaliseString(preset.tokenUrl));
+    setCallbackUrl(normaliseString(preset.callbackUrl));
     setClientId(normaliseString(preset.clientId));
     setScope(normaliseString(preset.scope));
     setState(normaliseString(preset.state));

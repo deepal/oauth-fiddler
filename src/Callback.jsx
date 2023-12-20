@@ -22,6 +22,8 @@ export default function Callback() {
   const queryParams = useQueryParams();
   const exchangeUrl = sessionStorage.getItem("tokenUrl");
 
+  const authorisationCode = queryParams.get("code");
+
   useEffect(() => {
     setPayload(
       new URLSearchParams({
@@ -125,7 +127,7 @@ export default function Callback() {
               </Grid>
             </Grid>
             <Grid item xs={12}>
-              <Button variant="contained" onClick={sendExchangeRequest}>
+              <Button disabled={!authorisationCode} variant="contained" onClick={sendExchangeRequest}>
                 Exchange Authorization Code for Tokens
               </Button>
             </Grid>
